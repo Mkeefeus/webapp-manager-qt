@@ -40,6 +40,12 @@ def idle(func):
         GObject.idle_add(func, *args)
     return wrapper
 
+# Detect if running on Wayland
+def is_wayland():
+    """Check if the current session is running on Wayland."""
+    return os.environ.get('WAYLAND_DISPLAY') is not None or \
+           os.environ.get('XDG_SESSION_TYPE') == 'wayland'
+
 # i18n
 APP = 'webapp-manager'
 LOCALE_DIR = "/usr/share/locale"
@@ -330,16 +336,31 @@ class WebAppManager:
             else:
                 firefox_profiles_dir = FIREFOX_SNAP_PROFILES_DIR
             firefox_profile_path = os.path.join(firefox_profiles_dir, codename)
-            exec_string = ("sh -c 'XAPP_FORCE_GTKWINDOW_ICON=\"" + icon + "\" " + browser.exec_path +
-                           " --class WebApp-" + codename +
-                           " --name WebApp-" + codename +
-                           " --profile " + firefox_profile_path +
-                           " --no-remote")
+            
+            # Handle icon differently for Wayland vs X11
+            if is_wayland():
+                # On Wayland, use --icon parameter
+                exec_string = (browser.exec_path +
+                               " --class WebApp-" + codename +
+                               " --name WebApp-" + codename +
+                               " --icon \"" + icon + "\"" +
+                               " --profile " + firefox_profile_path +
+                               " --no-remote")
+            else:
+                # On X11, use XAPP_FORCE_GTKWINDOW_ICON environment variable
+                exec_string = ("sh -c 'XAPP_FORCE_GTKWINDOW_ICON=\"" + icon + "\" " + browser.exec_path +
+                               " --class WebApp-" + codename +
+                               " --name WebApp-" + codename +
+                               " --profile " + firefox_profile_path +
+                               " --no-remote")
             if privatewindow:
                 exec_string += " --private-window"
             if custom_parameters:
                 exec_string += " {}".format(custom_parameters)
-            exec_string += " \"" + url + "\"" + "'"
+            exec_string += " \"" + url + "\""
+            # Close the sh -c wrapper for X11
+            if not is_wayland():
+                exec_string += "'"
             # Create a Firefox profile
             shutil.copytree('/usr/share/webapp-manager/firefox/profile', firefox_profile_path, dirs_exist_ok = True)
             if navbar:
@@ -349,16 +370,31 @@ class WebAppManager:
             # LibreWolf flatpak
             firefox_profiles_dir = LIBREWOLF_FLATPAK_PROFILES_DIR
             firefox_profile_path = os.path.join(firefox_profiles_dir, codename)
-            exec_string = ("sh -c 'XAPP_FORCE_GTKWINDOW_ICON=\"" + icon + "\" " + browser.exec_path +
-                           " --class WebApp-" + codename +
-                           " --name WebApp-" + codename +
-                           " --profile " + firefox_profile_path +
-                           " --no-remote")
+            
+            # Handle icon differently for Wayland vs X11
+            if is_wayland():
+                # On Wayland, use --icon parameter
+                exec_string = (browser.exec_path +
+                               " --class WebApp-" + codename +
+                               " --name WebApp-" + codename +
+                               " --icon \"" + icon + "\"" +
+                               " --profile " + firefox_profile_path +
+                               " --no-remote")
+            else:
+                # On X11, use XAPP_FORCE_GTKWINDOW_ICON environment variable
+                exec_string = ("sh -c 'XAPP_FORCE_GTKWINDOW_ICON=\"" + icon + "\" " + browser.exec_path +
+                               " --class WebApp-" + codename +
+                               " --name WebApp-" + codename +
+                               " --profile " + firefox_profile_path +
+                               " --no-remote")
             if privatewindow:
                 exec_string += " --private-window"
             if custom_parameters:
                 exec_string += " {}".format(custom_parameters)
-            exec_string += " \"" + url + "\"" + "'"
+            exec_string += " \"" + url + "\""
+            # Close the sh -c wrapper for X11
+            if not is_wayland():
+                exec_string += "'"
             # Create a Firefox profile
             shutil.copytree('/usr/share/webapp-manager/firefox/profile', firefox_profile_path, dirs_exist_ok = True)
             if navbar:
@@ -368,16 +404,31 @@ class WebAppManager:
             # Floorp flatpak
             firefox_profiles_dir = FLOORP_FLATPAK_PROFILES_DIR
             firefox_profile_path = os.path.join(firefox_profiles_dir, codename)
-            exec_string = ("sh -c 'XAPP_FORCE_GTKWINDOW_ICON=\"" + icon + "\" " + browser.exec_path +
-                           " --class WebApp-" + codename +
-                           " --name WebApp-" + codename +
-                           " --profile " + firefox_profile_path +
-                           " --no-remote")
+            
+            # Handle icon differently for Wayland vs X11
+            if is_wayland():
+                # On Wayland, use --icon parameter
+                exec_string = (browser.exec_path +
+                               " --class WebApp-" + codename +
+                               " --name WebApp-" + codename +
+                               " --icon \"" + icon + "\"" +
+                               " --profile " + firefox_profile_path +
+                               " --no-remote")
+            else:
+                # On X11, use XAPP_FORCE_GTKWINDOW_ICON environment variable
+                exec_string = ("sh -c 'XAPP_FORCE_GTKWINDOW_ICON=\"" + icon + "\" " + browser.exec_path +
+                               " --class WebApp-" + codename +
+                               " --name WebApp-" + codename +
+                               " --profile " + firefox_profile_path +
+                               " --no-remote")
             if privatewindow:
                 exec_string += " --private-window"
             if custom_parameters:
                 exec_string += " {}".format(custom_parameters)
-            exec_string += " \"" + url + "\"" + "'"
+            exec_string += " \"" + url + "\""
+            # Close the sh -c wrapper for X11
+            if not is_wayland():
+                exec_string += "'"
             # Create a Firefox profile
             shutil.copytree('/usr/share/webapp-manager/firefox/profile', firefox_profile_path, dirs_exist_ok = True)
             if navbar:
@@ -421,6 +472,13 @@ class WebAppManager:
                                " --app=" + "\"" + url + "\"" +
                                " --class=WebApp-" + codename +
                                " --name=WebApp-" + codename)
+
+            # Add Wayland support for Chromium-based browsers
+            if is_wayland():
+                exec_string += " --ozone-platform=wayland"
+                exec_string += " --enable-features=WaylandWindowDecorations"
+                # On Wayland, also set app-id to match the class for proper icon display
+                exec_string += " --app-id=WebApp-" + codename
 
             if privatewindow:
                 if browser.name == "Microsoft Edge":
