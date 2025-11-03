@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Configuration
-NAME="kde-webapp-manager"
+NAME="webapp-manager"
 VERSION="1.0.0"
 TARBALL="${NAME}-${VERSION}.tar.gz"
 SOURCES_DIR="$HOME/rpmbuild/SOURCES"
@@ -51,4 +51,4 @@ echo "✓ Created ${TARBALL}"
 echo "✓ Copied to ${SOURCES_DIR}/${TARBALL}"
 echo ""
 echo "You can now build the RPM with:"
-echo "  rpmbuild -ba kde-webapp-manager.spec"
+echo "  rpmbuild -ba webapp-manager.spec"
