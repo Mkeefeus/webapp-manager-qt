@@ -19,7 +19,6 @@ import traceback
 from typing import Optional
 
 #   2. Related third party imports.
-from gi.repository import GObject
 import PIL.Image
 import requests
 # Note: BeautifulSoup is an optional import supporting another way of getting a website's favicons.
@@ -37,7 +36,22 @@ def _async(func):
 # Used as a decorator to run things in the main loop, from another thread
 def idle(func):
     def wrapper(*args):
-        GObject.idle_add(func, *args)
+        try:
+            # Try Qt first
+            from PySide6.QtCore import QMetaObject, Qt, QCoreApplication
+            QMetaObject.invokeMethod(
+                QCoreApplication.instance(),
+                lambda: func(*args),
+                Qt.QueuedConnection
+            )
+        except ImportError:
+            try:
+                # Fallback to GTK
+                from gi.repository import GObject
+                GObject.idle_add(func, *args)
+            except ImportError:
+                # No GUI framework available, just call it
+                func(*args)
     return wrapper
 
 # Detect if running on Wayland
@@ -337,30 +351,21 @@ class WebAppManager:
                 firefox_profiles_dir = FIREFOX_SNAP_PROFILES_DIR
             firefox_profile_path = os.path.join(firefox_profiles_dir, codename)
             
-            # Handle icon differently for Wayland vs X11
-            if is_wayland():
-                # On Wayland, use --icon parameter
-                exec_string = (browser.exec_path +
-                               " --class WebApp-" + codename +
-                               " --name WebApp-" + codename +
-                               " --icon \"" + icon + "\"" +
-                               " --profile " + firefox_profile_path +
-                               " --no-remote")
-            else:
-                # On X11, use XAPP_FORCE_GTKWINDOW_ICON environment variable
-                exec_string = ("sh -c 'XAPP_FORCE_GTKWINDOW_ICON=\"" + icon + "\" " + browser.exec_path +
-                               " --class WebApp-" + codename +
-                               " --name WebApp-" + codename +
-                               " --profile " + firefox_profile_path +
-                               " --no-remote")
+            # Use --icon parameter for both Wayland and X11
+            # KDE's window manager will match icons using StartupWMClass in the desktop file
+            exec_string = (browser.exec_path +
+                           " --class WebApp-" + codename +
+                           " --name WebApp-" + codename +
+                           " --icon \"" + icon + "\"" +
+                           " --profile " + firefox_profile_path +
+                           " --no-remote")
+            
             if privatewindow:
                 exec_string += " --private-window"
             if custom_parameters:
                 exec_string += " {}".format(custom_parameters)
             exec_string += " \"" + url + "\""
-            # Close the sh -c wrapper for X11
-            if not is_wayland():
-                exec_string += "'"
+            
             # Create a Firefox profile
             shutil.copytree('/usr/share/webapp-manager/firefox/profile', firefox_profile_path, dirs_exist_ok = True)
             if navbar:
@@ -371,30 +376,20 @@ class WebAppManager:
             firefox_profiles_dir = LIBREWOLF_FLATPAK_PROFILES_DIR
             firefox_profile_path = os.path.join(firefox_profiles_dir, codename)
             
-            # Handle icon differently for Wayland vs X11
-            if is_wayland():
-                # On Wayland, use --icon parameter
-                exec_string = (browser.exec_path +
-                               " --class WebApp-" + codename +
-                               " --name WebApp-" + codename +
-                               " --icon \"" + icon + "\"" +
-                               " --profile " + firefox_profile_path +
-                               " --no-remote")
-            else:
-                # On X11, use XAPP_FORCE_GTKWINDOW_ICON environment variable
-                exec_string = ("sh -c 'XAPP_FORCE_GTKWINDOW_ICON=\"" + icon + "\" " + browser.exec_path +
-                               " --class WebApp-" + codename +
-                               " --name WebApp-" + codename +
-                               " --profile " + firefox_profile_path +
-                               " --no-remote")
+            # Use --icon parameter for both Wayland and X11
+            exec_string = (browser.exec_path +
+                           " --class WebApp-" + codename +
+                           " --name WebApp-" + codename +
+                           " --icon \"" + icon + "\"" +
+                           " --profile " + firefox_profile_path +
+                           " --no-remote")
+            
             if privatewindow:
                 exec_string += " --private-window"
             if custom_parameters:
                 exec_string += " {}".format(custom_parameters)
             exec_string += " \"" + url + "\""
-            # Close the sh -c wrapper for X11
-            if not is_wayland():
-                exec_string += "'"
+            
             # Create a Firefox profile
             shutil.copytree('/usr/share/webapp-manager/firefox/profile', firefox_profile_path, dirs_exist_ok = True)
             if navbar:
@@ -405,30 +400,20 @@ class WebAppManager:
             firefox_profiles_dir = FLOORP_FLATPAK_PROFILES_DIR
             firefox_profile_path = os.path.join(firefox_profiles_dir, codename)
             
-            # Handle icon differently for Wayland vs X11
-            if is_wayland():
-                # On Wayland, use --icon parameter
-                exec_string = (browser.exec_path +
-                               " --class WebApp-" + codename +
-                               " --name WebApp-" + codename +
-                               " --icon \"" + icon + "\"" +
-                               " --profile " + firefox_profile_path +
-                               " --no-remote")
-            else:
-                # On X11, use XAPP_FORCE_GTKWINDOW_ICON environment variable
-                exec_string = ("sh -c 'XAPP_FORCE_GTKWINDOW_ICON=\"" + icon + "\" " + browser.exec_path +
-                               " --class WebApp-" + codename +
-                               " --name WebApp-" + codename +
-                               " --profile " + firefox_profile_path +
-                               " --no-remote")
+            # Use --icon parameter for both Wayland and X11
+            exec_string = (browser.exec_path +
+                           " --class WebApp-" + codename +
+                           " --name WebApp-" + codename +
+                           " --icon \"" + icon + "\"" +
+                           " --profile " + firefox_profile_path +
+                           " --no-remote")
+            
             if privatewindow:
                 exec_string += " --private-window"
             if custom_parameters:
                 exec_string += " {}".format(custom_parameters)
             exec_string += " \"" + url + "\""
-            # Close the sh -c wrapper for X11
-            if not is_wayland():
-                exec_string += "'"
+            
             # Create a Firefox profile
             shutil.copytree('/usr/share/webapp-manager/firefox/profile', firefox_profile_path, dirs_exist_ok = True)
             if navbar:
