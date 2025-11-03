@@ -724,7 +724,7 @@ class WebAppManagerWindow(QMainWindow):
         QMessageBox.about(
             self,
             _("About Web Apps"),
-            _("Web Apps\n\nRun websites as if they were apps\n\nVersion: __DEB_VERSION__")
+            _("Web Apps\n\nRun websites as if they were apps\n\nVersion: @VERSION@")
         )
     
     def keyPressEvent(self, event):
