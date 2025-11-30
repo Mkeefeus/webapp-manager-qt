@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
     QComboBox, QMessageBox, QStackedWidget, QScrollArea,
     QCheckBox, QDialog, QDialogButtonBox, QMenuBar
 )
-from PySide6.QtCore import Qt, QThread, Signal, QSize
+from PySide6.QtCore import Qt, QThread, Signal, QSize, QTranslator, QLibraryInfo
 from PySide6.QtGui import QIcon, QPixmap, QAction, QKeySequence
 import setproctitle
 
@@ -170,7 +170,7 @@ class WebAppManagerWindow(QMainWindow):
         self.remove_button.setEnabled(False)
         self.remove_button.clicked.connect(self.on_remove_button)
         
-        self.run_button = QPushButton(_("Run"))
+        self.run_button = QPushButton(_("Launch"))
         self.run_button.setIcon(QIcon.fromTheme("system-run"))
         self.run_button.setEnabled(False)
         self.run_button.clicked.connect(self.on_run_button)
@@ -217,6 +217,7 @@ class WebAppManagerWindow(QMainWindow):
         self.name_entry.textChanged.connect(self.on_name_entry_changed)
         name_layout.addWidget(self.name_entry)
         form_layout.addLayout(name_layout)
+        self.name_entry.setPlaceholderText(_("Website name"))
         
         # Description
         desc_layout = QHBoxLayout()
@@ -224,19 +225,21 @@ class WebAppManagerWindow(QMainWindow):
         self.desc_entry = QLineEdit()
         desc_layout.addWidget(self.desc_entry)
         form_layout.addLayout(desc_layout)
+        self.desc_entry.setPlaceholderText(_("Web App"))
         
         # URL
         url_layout = QHBoxLayout()
-        self.url_label = QLabel(_("URL:"))
+        self.url_label = QLabel(_("Address:"))
         url_layout.addWidget(self.url_label)
         self.url_entry = QLineEdit()
         self.url_entry.textChanged.connect(self.on_url_entry_changed)
         url_layout.addWidget(self.url_entry)
-        self.favicon_button = QPushButton(_("Download Icon"))
+        self.favicon_button = QPushButton(_("Find icons online"))
         self.favicon_button.setEnabled(False)
         self.favicon_button.clicked.connect(self.on_favicon_button)
         url_layout.addWidget(self.favicon_button)
         form_layout.addLayout(url_layout)
+        self.url_entry.setPlaceholderText(_("https://www.website.com"))
         
         # Icon
         icon_layout = QHBoxLayout()
@@ -279,20 +282,22 @@ class WebAppManagerWindow(QMainWindow):
         
         # Custom Parameters
         custom_layout = QHBoxLayout()
-        custom_layout.addWidget(QLabel(_("Custom Parameters:")))
+        custom_layout.addWidget(QLabel(_("Custom parameters:")))
         self.custom_parameters_entry = QLineEdit()
         custom_layout.addWidget(self.custom_parameters_entry)
         form_layout.addLayout(custom_layout)
+        self.custom_parameters_entry.setPlaceholderText(_("Custom browser parameters"))
         
         # Switches/Checkboxes
-        self.isolated_checkbox = QCheckBox(_("Isolated Profile"))
+        self.isolated_checkbox = QCheckBox(_("Isolated profile:"))
         self.isolated_checkbox.setChecked(True)
         form_layout.addWidget(self.isolated_checkbox)
+        self.isolated_checkbox.setToolTip(_("If this option is enabled the website will run with its own browser profile."))
         
-        self.navbar_checkbox = QCheckBox(_("Show Navigation Bar"))
+        self.navbar_checkbox = QCheckBox(_("Navigation bar:"))
         form_layout.addWidget(self.navbar_checkbox)
         
-        self.private_checkbox = QCheckBox(_("Private Window"))
+        self.private_checkbox = QCheckBox(_("Private/Incognito Window:"))
         form_layout.addWidget(self.private_checkbox)
         
         form_layout.addStretch()
@@ -320,7 +325,7 @@ class WebAppManagerWindow(QMainWindow):
         page = QWidget()
         layout = QVBoxLayout(page)
         
-        layout.addWidget(QLabel(_("Choose an icon:")))
+        layout.addWidget(QLabel(_("Choose an icon")))
         
         # Scroll area for favicon grid
         scroll = QScrollArea()
@@ -363,20 +368,20 @@ class WebAppManagerWindow(QMainWindow):
         # File menu
         file_menu = menubar.addMenu(_("&File"))
         
-        quit_action = QAction(_("&Quit"), self)
+        quit_action = QAction(_("Quit"), self)
         quit_action.setShortcut(QKeySequence("Ctrl+Q"))
         quit_action.triggered.connect(self.close)
         file_menu.addAction(quit_action)
         
         # Help menu
-        help_menu = menubar.addMenu(_("&Help"))
+        help_menu = menubar.addMenu(_("Help"))
         
-        shortcuts_action = QAction(_("Keyboard &Shortcuts"), self)
+        shortcuts_action = QAction(_("Keyboard Shortcuts"), self)
         shortcuts_action.setShortcut(QKeySequence("Ctrl+K"))
         shortcuts_action.triggered.connect(self.show_shortcuts)
         help_menu.addAction(shortcuts_action)
         
-        about_action = QAction(_("&About"), self)
+        about_action = QAction(_("About"), self)
         about_action.setShortcut(QKeySequence("F1"))
         about_action.triggered.connect(self.show_about)
         help_menu.addAction(about_action)
@@ -500,7 +505,7 @@ class WebAppManagerWindow(QMainWindow):
         reply = QMessageBox.question(
             self,
             _("Delete '%s'") % self.selected_webapp.name,
-            _("Are you sure you want to delete '%s'?\n\nThis Web App will be permanently lost.") % self.selected_webapp.name,
+            (_("Are you sure you want to delete '%s'?") % self.selected_webapp.name) + "\n\n" + _("This Web App will be permanently lost."),
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No
         )
@@ -698,18 +703,39 @@ class WebAppManagerWindow(QMainWindow):
     def show_shortcuts(self):
         """Show keyboard shortcuts dialog"""
         dialog = QDialog(self)
-        dialog.setWindowTitle(_("Keyboard Shortcuts"))
+        dialog.setWindowTitle(_("Shortcuts"))
         layout = QVBoxLayout(dialog)
         
-        shortcuts = [
-            (_("Add Web App"), "Ctrl+N"),
-            (_("Edit Web App"), "Ctrl+E"),
-            (_("Delete Web App"), "Ctrl+D"),
-            (_("Keyboard Shortcuts"), "Ctrl+K"),
-            (_("Quit"), "Ctrl+Q / Ctrl+W"),
+        # Web Apps category
+        webapps_label = QLabel(f"<h3>{_('Web Apps')}</h3>")
+        layout.addWidget(webapps_label)
+        
+        webapp_shortcuts = [
+            (_("Add"), "Ctrl+N"),
+            (_("Edit"), "Ctrl+E"),
+            (_("Remove"), "Ctrl+D"),
+            (_("Launch"), "Space / Enter"),
         ]
         
-        for action, shortcut in shortcuts:
+        for action, shortcut in webapp_shortcuts:
+            label = QLabel(f"<b>{action}:</b> {shortcut}")
+            layout.addWidget(label)
+        
+        # Add spacing between categories
+        layout.addSpacing(20)
+        
+        # Other Shortcuts category
+        other_label = QLabel(f"<h3>{_('Other Shortcuts')}</h3>")
+        layout.addWidget(other_label)
+        
+        other_shortcuts = [
+            (_("Go Back"), "Escape"),
+            (_("About"), "F1"),
+            (_("Shortcuts"), "Ctrl+K"),
+            (_("Quit"), "Ctrl+Q"),
+        ]
+        
+        for action, shortcut in other_shortcuts:
             label = QLabel(f"<b>{action}:</b> {shortcut}")
             layout.addWidget(label)
         
@@ -723,8 +749,8 @@ class WebAppManagerWindow(QMainWindow):
         """Show about dialog"""
         QMessageBox.about(
             self,
-            _("About Web Apps"),
-            _("Web Apps\n\nRun websites as if they were apps\n\nVersion: @VERSION@")
+            _("About"),
+            _("Web Apps") + "\n\n" + _("Run websites as if they were apps") + "\n\nVersion: @VERSION@"
         )
     
     def keyPressEvent(self, event):
@@ -750,6 +776,19 @@ def main():
     app.setApplicationName("webapp-manager")
     app.setOrganizationName("webapp-manager")
     app.setWindowIcon(QIcon.fromTheme("webapp-manager"))
+    
+    # Load Qt's built-in translations for dialog buttons, etc.
+    qt_translator = QTranslator()
+    # Get the current locale from environment or system
+    current_locale = locale.getlocale()[0]
+    if current_locale:
+        # Extract language code (e.g., 'es_ES' -> 'es')
+        lang_code = current_locale.split('_')[0]
+        
+        # Try to load Qt translations from system location
+        translations_path = QLibraryInfo.path(QLibraryInfo.TranslationsPath)
+        if qt_translator.load(f"qtbase_{lang_code}", translations_path):
+            app.installTranslator(qt_translator)
     
     window = WebAppManagerWindow()
     window.show()

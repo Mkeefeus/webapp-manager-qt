@@ -2,3 +2,9 @@
 __pycache__/
 *.py[cod]
 *$py.class
+
+# Built translations (generated during build)
+usr/share/locale/
+
+# Distribution files
+dist/

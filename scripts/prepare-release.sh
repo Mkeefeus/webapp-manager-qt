@@ -11,23 +11,24 @@ PACKAGE_NAME="webapp-manager-qt-$VERSION"
 echo "Cleaning previous builds..."
 rm -rf $DIST_DIR
 
+# Build translations
+echo "Building translations..."
+make buildmo
+
 # Build the project
 echo "Building the project..."
 mkdir -p $DIST_DIR/$PACKAGE_NAME
 
-# Copy all files except excluded ones
-echo "Copying files..."
-rsync -av \
-  --exclude='.git' \
-  --exclude='.github/' \
-  --exclude='.copr/' \
-  --exclude='create-source-tarball.sh' \
-  --exclude='.gitignore' \
-  --exclude='dist/' \
-  --exclude='scripts/' \
-  ./ $DIST_DIR/$PACKAGE_NAME/
+# Copy only the usr directory (contains all runtime files)
+echo "Copying runtime files..."
+cp -r usr $DIST_DIR/$PACKAGE_NAME/
 
-# Package the application (from parent directory, not inside dist)
+# Copy documentation files
+echo "Copying documentation..."
+cp README.md $DIST_DIR/$PACKAGE_NAME/
+cp LICENSE $DIST_DIR/$PACKAGE_NAME/
+
+# Package the application
 echo "Packaging the application..."
 tar -czf $DIST_DIR/webapp-manager-qt-$VERSION.tar.gz -C $DIST_DIR $PACKAGE_NAME
 
